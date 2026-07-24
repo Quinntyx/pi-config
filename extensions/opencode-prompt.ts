@@ -19,8 +19,8 @@ function fitBorder(
 
 	let leftText = left;
 	let rightText = right;
-	const fixedWidth = 2;
-	const minimumGap = 3;
+	const fixedWidth = 0;
+	const minimumGap = 2;
 
 	while (
 		fixedWidth + visibleWidth(leftText) + visibleWidth(rightText) + minimumGap > width &&
@@ -36,7 +36,7 @@ function fitBorder(
 	}
 
 	const gapWidth = Math.max(0, width - fixedWidth - visibleWidth(leftText) - visibleWidth(rightText));
-	return `${border("─")}${leftText}${fill("─".repeat(gapWidth))}${rightText}${border("─")}`;
+	return `${leftText}${fill("─".repeat(gapWidth))}${rightText}`;
 }
 
 function formatCwd(cwd: string): { parent: string; leaf: string } {
@@ -209,29 +209,48 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			render(width: number): string[] {
-				const lines = super.render(width);
-				if (lines.length < 2) return lines;
+				if (width < 6) return super.render(width);
 
+				const innerWidth = width - 2;
 				const theme = ctx.ui.theme;
 				const thinking = pi.getThinkingLevel();
+				const accentRail = theme.getThinkingBorderColor(thinking);
+				const mutedBorder = (text: string) => theme.fg("borderMuted", text);
+
+				const originalBorderColor = this.borderColor;
+				this.borderColor = mutedBorder;
+				const innerLines = super.render(innerWidth);
+				this.borderColor = originalBorderColor;
+
+				if (innerLines.length < 2) return innerLines;
+
 				const identity = formatModelIdentity(ctx.model);
 				const model = theme.fg("muted", identity.name);
 				const attribution = theme.fg("dim", identity.attribution);
-				const reasoning = theme.getThinkingBorderColor(thinking)(theme.bold(thinking));
+				const reasoning = accentRail(theme.bold(thinking));
+
 				const topLeft = isWorking ? theme.fg("accent", ` ${spinnerFrames[spinnerIndex]} `) : "";
 				const bottomLeft = ` ${model}${attribution ? ` · ${attribution}` : ""} · ${reasoning} `;
 				const cwd = formatCwd(ctx.cwd);
 				const completion = lastCompletion ? `${lastCompletion} · ` : "";
 				const location = `${cwd.leaf}${branch ? `:${branch}` : ""}`;
 				const bottomRight =
-					theme.fg("dim", ` ${completion}${formatContext(ctx)} · ${cwd.parent}`) +
+					theme.fg("dim", ` ${completion}${formatContext(ctx)} · `) +
 					theme.fg("muted", location) +
 					" ";
-				const borderColor = (text: string) => this.borderColor(text);
 
-				lines[0] = fitBorder(topLeft, "", width, borderColor);
-				lines[lines.length - 1] = fitBorder(bottomLeft, bottomRight, width, borderColor);
-				return lines;
+				const topFill = fitBorder(topLeft, "", innerWidth, mutedBorder);
+				const bottomFill = fitBorder(bottomLeft, bottomRight, innerWidth, mutedBorder);
+
+				const result: string[] = [];
+				result.push(accentRail("┌") + topFill + mutedBorder("┐"));
+
+				for (let i = 1; i < innerLines.length - 1; i++) {
+					result.push(accentRail("│") + innerLines[i] + mutedBorder("│"));
+				}
+
+				result.push(accentRail("└") + bottomFill + mutedBorder("┘"));
+				return result;
 			}
 		}
 
