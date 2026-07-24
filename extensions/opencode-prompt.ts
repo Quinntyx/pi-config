@@ -131,6 +131,26 @@ class EmptyFooter implements Component {
 const SENTINEL = "\x02";
 const PROBE = "\x01";
 
+// waverows spinner from vyfor/rattles — 16 frames, 90ms interval
+const spinnerFrames = [
+	"⠖⠉⠉⠑",
+	"⡠⠖⠉⠉",
+	"⣠⡠⠖⠉",
+	"⣄⣠⡠⠖",
+	"⠢⣄⣠⡠",
+	"⠙⠢⣄⣠",
+	"⠉⠙⠢⣄",
+	"⠊⠉⠙⠢",
+	"⠜⠊⠉⠙",
+	"⡤⠜⠊⠉",
+	"⣀⡤⠜⠊",
+	"⢤⣀⡤⠜",
+	"⠣⢤⣀⡤",
+	"⠑⠣⢤⣀",
+	"⠉⠑⠣⢤",
+	"⠋⠉⠑⠣",
+];
+
 export default function (pi: ExtensionAPI) {
 	let isWorking = false;
 	let spinnerIndex = 0;
@@ -139,7 +159,6 @@ export default function (pi: ExtensionAPI) {
 	let runStartedAt: number | undefined;
 	let lastCompletion: string | undefined;
 	let refreshBranch: (() => Promise<void>) | undefined;
-	const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 	const stopSpinner = () => {
 		if (spinnerTimer) clearInterval(spinnerTimer);
@@ -154,7 +173,7 @@ export default function (pi: ExtensionAPI) {
 		spinnerTimer = setInterval(() => {
 			spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length;
 			activeTui?.requestRender();
-		}, 80);
+		}, 90);
 		activeTui?.requestRender();
 	});
 
@@ -203,15 +222,15 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			render(width: number): string[] {
-				if (width < 6) return super.render(width);
+				if (width < 8) return super.render(width);
 
 				const theme = ctx.ui.theme;
 				const thinking = pi.getThinkingLevel();
 				const accentRail = theme.getThinkingBorderColor(thinking);
 				const rail = "▎";
 
-				// Inner width = total minus the 1-char rail
-				const innerWidth = width - 1;
+				// Layout: [rail 1] [padL 1] [editor content] [padR 1]
+				const editorWidth = width - 3;
 
 				// Probe theme.bg to extract raw ANSI prefix/suffix for persistent background.
 				// The editor cursor uses \x1b[0m (full reset) which kills our background.
@@ -221,23 +240,27 @@ export default function (pi: ExtensionAPI) {
 				const bgPrefix = bgParts[0] || "";
 				const bgSuffix = bgParts[1] || "";
 
-				const makeBgLine = (rawLine: string): string => {
-					const visW = visibleWidth(rawLine);
-					const gap = Math.max(0, innerWidth - visW);
-					const fixed = rawLine.replace(/\x1b\[0m/g, `\x1b[0m${bgPrefix}`);
-					return `${bgPrefix}${fixed}${" ".repeat(gap)}${bgSuffix}`;
+				// Helper: build one line with opaque bg + accent rail + content + padding.
+				// The bgPrefix is set at the very start so the rail character gets the
+				// opaque background too. accentRail sets only the foreground (thinking
+				// level color) and resets it with \x1b[39m — the background persists.
+				const buildLine = (content: string, contentWidth: number): string => {
+					const visW = visibleWidth(content);
+					const gap = Math.max(0, contentWidth - visW);
+					const fixed = content.replace(/\x1b\[0m/g, `\x1b[0m${bgPrefix}`);
+					return `${bgPrefix}${accentRail(rail)} ${fixed}${" ".repeat(gap)} ${bgSuffix}`;
 				};
 
-				// Use sentinel borderColor so we can reliably detect top/bottom borders
-				// and separate autocomplete lines from prompt lines.
+				// Use sentinel borderColor to detect top/bottom borders and separate
+				// autocomplete lines from prompt lines.
 				const originalBorderColor = this.borderColor;
 				this.borderColor = () => SENTINEL;
-				const rawLines = super.render(innerWidth);
+				const rawLines = super.render(editorWidth);
 				this.borderColor = originalBorderColor;
 
 				if (rawLines.length < 3) return rawLines;
 
-				// Find the bottom border (second SENTINEL from the end)
+				// Find the bottom border (second SENTINEL)
 				let bottomBorderIdx = -1;
 				for (let i = rawLines.length - 1; i >= 1; i--) {
 					if (rawLines[i] === SENTINEL) {
@@ -247,42 +270,41 @@ export default function (pi: ExtensionAPI) {
 				}
 				if (bottomBorderIdx === -1) bottomBorderIdx = rawLines.length - 1;
 
-				// Prompt text lines live between the two borders
 				const promptLines = rawLines.slice(1, bottomBorderIdx);
-				// Autocomplete (slash menu) lines live after the bottom border
 				const autocompleteLines = rawLines.slice(bottomBorderIdx + 1);
 
 				const result: string[] = [];
 
-				// ── Slash-command autocomplete ABOVE the prompt (like opencode) ──
+				// ── Slash-command autocomplete ABOVE the prompt ──
 				for (const acLine of autocompleteLines) {
 					const gap = Math.max(0, width - visibleWidth(acLine));
 					result.push(acLine + " ".repeat(gap));
 				}
 
-				// ── Prompt input lines: opaque background + thin left accent rail ──
+				// ── Prompt input lines: opaque background + thin accent rail + padding ──
 				for (const line of promptLines) {
-					result.push(accentRail(rail) + makeBgLine(line));
+					result.push(buildLine(line, editorWidth));
 				}
 
-				// ── Status row: same opaque background + rail, spinner on the left ──
-				const spinner = isWorking ? theme.fg("accent", `${spinnerFrames[spinnerIndex]} `) : "";
+				// ── Status row: same bg + rail + padding, spinner on the left ──
+				const spinner = isWorking
+					? `${theme.fg("accent", spinnerFrames[spinnerIndex])} `
+					: "";
 				const identity = formatModelIdentity(ctx.model);
 				const model = theme.fg("muted", identity.name);
 				const attribution = theme.fg("dim", identity.attribution);
 				const reasoning = accentRail(theme.bold(thinking));
 
-				const statusLeft = ` ${spinner}${model}${attribution ? ` · ${attribution}` : ""} · ${reasoning} `;
+				const statusLeft = `${spinner}${model}${attribution ? ` · ${attribution}` : ""} · ${reasoning}`;
 				const cwd = formatCwd(ctx.cwd);
 				const completion = lastCompletion ? `${lastCompletion} · ` : "";
 				const location = `${cwd.leaf}${branch ? `:${branch}` : ""}`;
 				const statusRight =
-					theme.fg("dim", ` ${completion}${formatContext(ctx)} · `) +
-					theme.fg("muted", location) +
-					" ";
+					theme.fg("dim", `${completion}${formatContext(ctx)} · `) +
+					theme.fg("muted", location);
 
-				const statusText = formatStatusRow(statusLeft, statusRight, innerWidth);
-				result.push(accentRail(rail) + makeBgLine(statusText));
+				const statusText = formatStatusRow(statusLeft, statusRight, editorWidth);
+				result.push(buildLine(statusText, editorWidth));
 
 				return result;
 			}
