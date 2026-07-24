@@ -7,36 +7,27 @@ import {
 import type { Component, EditorTheme, TUI } from "@earendil-works/pi-tui";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
-function fitBorder(
-	left: string,
-	right: string,
-	width: number,
-	border: (text: string) => string,
-	fill: (text: string) => string = border,
-): string {
+function formatStatusRow(left: string, right: string, width: number): string {
 	if (width <= 0) return "";
-	if (width === 1) return border("─");
-
 	let leftText = left;
 	let rightText = right;
-	const fixedWidth = 0;
 	const minimumGap = 2;
 
 	while (
-		fixedWidth + visibleWidth(leftText) + visibleWidth(rightText) + minimumGap > width &&
+		visibleWidth(leftText) + visibleWidth(rightText) + minimumGap > width &&
 		visibleWidth(rightText) > 0
 	) {
 		rightText = truncateToWidth(rightText, Math.max(0, visibleWidth(rightText) - 1), "");
 	}
 	while (
-		fixedWidth + visibleWidth(leftText) + visibleWidth(rightText) + minimumGap > width &&
+		visibleWidth(leftText) + visibleWidth(rightText) + minimumGap > width &&
 		visibleWidth(leftText) > 0
 	) {
 		leftText = truncateToWidth(leftText, Math.max(0, visibleWidth(leftText) - 1), "");
 	}
 
-	const gapWidth = Math.max(0, width - fixedWidth - visibleWidth(leftText) - visibleWidth(rightText));
-	return `${leftText}${fill("─".repeat(gapWidth))}${rightText}`;
+	const gapWidth = Math.max(0, width - visibleWidth(leftText) - visibleWidth(rightText));
+	return `${leftText}${" ".repeat(gapWidth)}${rightText}`;
 }
 
 function formatCwd(cwd: string): { parent: string; leaf: string } {
@@ -205,6 +196,7 @@ export default function (pi: ExtensionAPI) {
 		class OpenCodePromptEditor extends CustomEditor {
 			constructor(tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) {
 				super(tui, theme, keybindings, { paddingX: 0 });
+				this.borderColor = () => ""; // Suppress built-in top & bottom horizontal lines
 				activeTui = tui;
 			}
 
@@ -215,42 +207,39 @@ export default function (pi: ExtensionAPI) {
 				const theme = ctx.ui.theme;
 				const thinking = pi.getThinkingLevel();
 				const accentRail = theme.getThinkingBorderColor(thinking);
-				const mutedBorder = (text: string) => theme.fg("borderMuted", text);
 
-				const originalBorderColor = this.borderColor;
-				this.borderColor = mutedBorder;
-				const innerLines = super.render(innerWidth);
-				this.borderColor = originalBorderColor;
+				const rawLines = super.render(innerWidth);
+				if (rawLines.length < 3) return rawLines;
 
-				if (innerLines.length < 2) return innerLines;
+				const promptLines: string[] = [];
+				const spinner = isWorking ? theme.fg("accent", `${spinnerFrames[spinnerIndex]} `) : "";
 
+				// Format each inner prompt input line with Everforest Light opaque background + left accent rail
+				for (let i = 1; i < rawLines.length - 1; i++) {
+					const textLine = rawLines[i];
+					const gap = Math.max(0, innerWidth - visibleWidth(textLine));
+					const prefix = i === 1 ? spinner : "";
+					const bgContent = theme.bg("userMessageBg", prefix + textLine + " ".repeat(gap));
+					promptLines.push(accentRail("▌") + bgContent);
+				}
+
+				// Status row below prompt box
 				const identity = formatModelIdentity(ctx.model);
 				const model = theme.fg("muted", identity.name);
 				const attribution = theme.fg("dim", identity.attribution);
 				const reasoning = accentRail(theme.bold(thinking));
 
-				const topLeft = isWorking ? theme.fg("accent", ` ${spinnerFrames[spinnerIndex]} `) : "";
-				const bottomLeft = ` ${model}${attribution ? ` · ${attribution}` : ""} · ${reasoning} `;
+				const statusLeft = ` ${model}${attribution ? ` · ${attribution}` : ""} · ${reasoning} `;
 				const cwd = formatCwd(ctx.cwd);
 				const completion = lastCompletion ? `${lastCompletion} · ` : "";
 				const location = `${cwd.leaf}${branch ? `:${branch}` : ""}`;
-				const bottomRight =
+				const statusRight =
 					theme.fg("dim", ` ${completion}${formatContext(ctx)} · `) +
 					theme.fg("muted", location) +
 					" ";
 
-				const topFill = fitBorder(topLeft, "", innerWidth, mutedBorder);
-				const bottomFill = fitBorder(bottomLeft, bottomRight, innerWidth, mutedBorder);
-
-				const result: string[] = [];
-				result.push(accentRail("┌") + topFill + mutedBorder("┐"));
-
-				for (let i = 1; i < innerLines.length - 1; i++) {
-					result.push(accentRail("│") + innerLines[i] + mutedBorder("│"));
-				}
-
-				result.push(accentRail("└") + bottomFill + mutedBorder("┘"));
-				return result;
+				const statusRow = formatStatusRow(statusLeft, statusRight, width);
+				return [...promptLines, statusRow];
 			}
 		}
 
