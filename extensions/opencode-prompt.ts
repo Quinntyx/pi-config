@@ -111,9 +111,27 @@ function formatOwner(ownerPath: string): string {
 function formatModelIdentity(model: ExtensionContext["model"]): { name: string; attribution: string } {
 	if (!model) return { name: "No-Model", attribution: "" };
 	const path = model.id.split("/").filter(Boolean);
-	const modelId = path.pop() ?? model.id;
-	const provider = formatProvider(model.provider);
+	let modelId = path.pop() ?? model.id;
 
+	if (model.provider === "antigravity") {
+		let family = "Gemini";
+		if (/^gemini-/i.test(modelId)) {
+			modelId = modelId.replace(/^gemini-/i, "");
+			family = "Gemini";
+		} else if (/^claude-/i.test(modelId)) {
+			modelId = modelId.replace(/^claude-/i, "");
+			family = "Claude";
+		} else if (/^gpt-/i.test(modelId)) {
+			modelId = modelId.replace(/^gpt-/i, "");
+			family = "GPT";
+		}
+		return {
+			name: formatModelName(modelId),
+			attribution: `${family} (Antigravity)`,
+		};
+	}
+
+	const provider = formatProvider(model.provider);
 	return {
 		name: formatModelName(modelId),
 		attribution: path.length > 0 ? `${formatOwner(path.join("/"))} (${provider})` : provider,
