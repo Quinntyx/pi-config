@@ -1,0 +1,19 @@
+# Credentials and OAuth tokens
+auth.json
+antigravity-accounts.json
+antigravity.json
+
+# Generated registries, package checkouts, and session state
+models-store.json
+npm/
+git/
+sessions/
+session-store/
+
+# Runtime data created by installed extensions
+session-move/
+workflow-runs/
+agent-memory/
+logs/
+*.tmp
+*.log
