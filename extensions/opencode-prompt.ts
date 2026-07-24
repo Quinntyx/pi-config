@@ -281,10 +281,16 @@ export default function (pi: ExtensionAPI) {
 					result.push(acLine + " ".repeat(gap));
 				}
 
+				// ── Top vertical padding ──
+				result.push(buildLine("", editorWidth));
+
 				// ── Prompt input lines: opaque background + thin accent rail + padding ──
 				for (const line of promptLines) {
 					result.push(buildLine(line, editorWidth));
 				}
+
+				// ── Bottom vertical padding (between prompt and status) ──
+				result.push(buildLine("", editorWidth));
 
 				// ── Status row: same bg + rail + padding, spinner on the left ──
 				const spinner = isWorking
