@@ -128,6 +128,9 @@ class EmptyFooter implements Component {
 	invalidate(): void {}
 }
 
+const SENTINEL = "\x02";
+const PROBE = "\x01";
+
 export default function (pi: ExtensionAPI) {
 	let isWorking = false;
 	let spinnerIndex = 0;
@@ -196,40 +199,80 @@ export default function (pi: ExtensionAPI) {
 		class OpenCodePromptEditor extends CustomEditor {
 			constructor(tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) {
 				super(tui, theme, keybindings, { paddingX: 0 });
-				this.borderColor = () => ""; // Suppress built-in top & bottom horizontal lines
 				activeTui = tui;
 			}
 
 			render(width: number): string[] {
 				if (width < 6) return super.render(width);
 
-				const innerWidth = width - 2;
 				const theme = ctx.ui.theme;
 				const thinking = pi.getThinkingLevel();
 				const accentRail = theme.getThinkingBorderColor(thinking);
+				const rail = "▎";
 
+				// Inner width = total minus the 1-char rail
+				const innerWidth = width - 1;
+
+				// Probe theme.bg to extract raw ANSI prefix/suffix for persistent background.
+				// The editor cursor uses \x1b[0m (full reset) which kills our background.
+				// We replace \x1b[0m with \x1b[0m + bgPrefix to re-apply it after resets.
+				const bgProbe = theme.bg("userMessageBg", PROBE);
+				const bgParts = bgProbe.split(PROBE);
+				const bgPrefix = bgParts[0] || "";
+				const bgSuffix = bgParts[1] || "";
+
+				const makeBgLine = (rawLine: string): string => {
+					const visW = visibleWidth(rawLine);
+					const gap = Math.max(0, innerWidth - visW);
+					const fixed = rawLine.replace(/\x1b\[0m/g, `\x1b[0m${bgPrefix}`);
+					return `${bgPrefix}${fixed}${" ".repeat(gap)}${bgSuffix}`;
+				};
+
+				// Use sentinel borderColor so we can reliably detect top/bottom borders
+				// and separate autocomplete lines from prompt lines.
+				const originalBorderColor = this.borderColor;
+				this.borderColor = () => SENTINEL;
 				const rawLines = super.render(innerWidth);
+				this.borderColor = originalBorderColor;
+
 				if (rawLines.length < 3) return rawLines;
 
-				const promptLines: string[] = [];
-				const spinner = isWorking ? theme.fg("accent", `${spinnerFrames[spinnerIndex]} `) : "";
+				// Find the bottom border (second SENTINEL from the end)
+				let bottomBorderIdx = -1;
+				for (let i = rawLines.length - 1; i >= 1; i--) {
+					if (rawLines[i] === SENTINEL) {
+						bottomBorderIdx = i;
+						break;
+					}
+				}
+				if (bottomBorderIdx === -1) bottomBorderIdx = rawLines.length - 1;
 
-				// Format each inner prompt input line with Everforest Light opaque background + left accent rail
-				for (let i = 1; i < rawLines.length - 1; i++) {
-					const textLine = rawLines[i];
-					const gap = Math.max(0, innerWidth - visibleWidth(textLine));
-					const prefix = i === 1 ? spinner : "";
-					const bgContent = theme.bg("userMessageBg", prefix + textLine + " ".repeat(gap));
-					promptLines.push(accentRail("▌") + bgContent);
+				// Prompt text lines live between the two borders
+				const promptLines = rawLines.slice(1, bottomBorderIdx);
+				// Autocomplete (slash menu) lines live after the bottom border
+				const autocompleteLines = rawLines.slice(bottomBorderIdx + 1);
+
+				const result: string[] = [];
+
+				// ── Slash-command autocomplete ABOVE the prompt (like opencode) ──
+				for (const acLine of autocompleteLines) {
+					const gap = Math.max(0, width - visibleWidth(acLine));
+					result.push(acLine + " ".repeat(gap));
 				}
 
-				// Status row below prompt box
+				// ── Prompt input lines: opaque background + thin left accent rail ──
+				for (const line of promptLines) {
+					result.push(accentRail(rail) + makeBgLine(line));
+				}
+
+				// ── Status row: same opaque background + rail, spinner on the left ──
+				const spinner = isWorking ? theme.fg("accent", `${spinnerFrames[spinnerIndex]} `) : "";
 				const identity = formatModelIdentity(ctx.model);
 				const model = theme.fg("muted", identity.name);
 				const attribution = theme.fg("dim", identity.attribution);
 				const reasoning = accentRail(theme.bold(thinking));
 
-				const statusLeft = ` ${model}${attribution ? ` · ${attribution}` : ""} · ${reasoning} `;
+				const statusLeft = ` ${spinner}${model}${attribution ? ` · ${attribution}` : ""} · ${reasoning} `;
 				const cwd = formatCwd(ctx.cwd);
 				const completion = lastCompletion ? `${lastCompletion} · ` : "";
 				const location = `${cwd.leaf}${branch ? `:${branch}` : ""}`;
@@ -238,8 +281,10 @@ export default function (pi: ExtensionAPI) {
 					theme.fg("muted", location) +
 					" ";
 
-				const statusRow = formatStatusRow(statusLeft, statusRight, width);
-				return [...promptLines, statusRow];
+				const statusText = formatStatusRow(statusLeft, statusRight, innerWidth);
+				result.push(accentRail(rail) + makeBgLine(statusText));
+
+				return result;
 			}
 		}
 
