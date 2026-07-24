@@ -12,7 +12,7 @@
     "zai/glm-5.2"
   ],
   "packages": [
-    "git:github.com/Quinntyx/pi-ptc-next@c80e8e83dcc625c72c73461bcee261302835035f",
+    "git:github.com/Quinntyx/pi-ptc-next@95038867e6acaae1995fb5f173ead1c946d45653",
     "npm:pi-subagents",
     "npm:@narumitw/pi-btw",
     "npm:@quintinshaw/pi-dynamic-workflows",
