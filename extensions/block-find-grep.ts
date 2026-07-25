@@ -46,10 +46,10 @@ export default function (pi: ExtensionAPI) {
 		return {
 			block: true,
 			reason:
-				`\`${cmd}\` is blocked by policy — use ripgrep (`rg`) instead. ${hint} ` +
-				"This covers every form (grep, sudo grep, find, xargs grep, /bin/grep, …, and " +
-				"mid-pipeline usage). `git grep` and `git log --grep=` remain allowed. If ripgrep " +
-				"genuinely cannot do the job, stop and ask the user.",
+				cmd + ' is blocked by policy — use ripgrep (rg) instead. ' + hint +
+				'This covers every form (grep, sudo grep, find, xargs grep, /bin/grep, …, and ' +
+				'mid-pipeline usage). git grep and git log --grep= remain allowed. If ripgrep ' +
+				'genuinely cannot do the job, stop and ask the user.',
 		};
 	});
 }
