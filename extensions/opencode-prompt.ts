@@ -58,6 +58,11 @@ function formatContext(ctx: ExtensionContext): string {
 	return `ctx ${formatTokens(usage.tokens)}/${formatTokens(contextWindow)} (${percent})`;
 }
 
+function readPtcTokensSaved(): number {
+	const telemetry = (globalThis as Record<string, unknown>).__ptcTokensSaved as { tokensSaved?: number } | undefined;
+	return telemetry?.tokensSaved ?? 0;
+}
+
 function formatDuration(milliseconds: number): string {
 	const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
 	const hours = Math.floor(totalSeconds / 3600);
@@ -245,8 +250,8 @@ export default function (pi: ExtensionAPI) {
 				const theme = ctx.ui.theme;
 				const thinking = pi.getThinkingLevel();
 				const accentRail = theme.getThinkingBorderColor(thinking);
-				const rail = "▎";
-
+				const rail = "┃";
+				const bottomRail = "╹";
 				// Layout: [rail 1] [padL 1] [editor content] [padR 1]
 				const editorWidth = width - 3;
 
@@ -258,15 +263,36 @@ export default function (pi: ExtensionAPI) {
 				const bgPrefix = bgParts[0] || "";
 				const bgSuffix = bgParts[1] || "";
 
-				// Helper: build one line with opaque bg + accent rail + content + padding.
-				// The bgPrefix is set at the very start so the rail character gets the
-				// opaque background too. accentRail sets only the foreground (thinking
-				// level color) and resets it with \x1b[39m — the background persists.
+				// Convert the bg escape (48;...) into a fg escape (38;...) so we can
+				// paint ▀ upper-half-block characters with the box background via
+				// foreground, leaving the cell background transparent — only the top
+				// half is filled, matching OpenCode's half-height bottom edge.
+				const bgFgPrefix = bgPrefix.replace(/\x1b\[48/, "\x1b[38");
+				const bgFgSuffix = "\x1b[39m";
+
+				// Helper: build one line matching OpenCode's layout: the rail cell has
+				// NO background (transparent — the narrow ┃ glyph leaves a gap that
+				// shows the base color), and the opaque box bg starts at the padL
+				// space. accentRail sets only the foreground (thinking-level color),
+				// so the rail floats to the left of the content box with the gap
+				// between them — exactly like OpenCode's border + boxed content.
 				const buildLine = (content: string, contentWidth: number): string => {
 					const visW = visibleWidth(content);
 					const gap = Math.max(0, contentWidth - visW);
 					const fixed = content.replace(/\x1b\[0m/g, `\x1b[0m${bgPrefix}`);
-					return `${bgPrefix}${accentRail(rail)} ${fixed}${" ".repeat(gap)} ${bgSuffix}`;
+					return `${accentRail(rail)}${bgPrefix} ${fixed}${" ".repeat(gap)} ${bgSuffix}`;
+				};
+
+				// Half-height bottom strip matching OpenCode's bottom edge:
+				// ╹ (heavy up, accent-colored) is the half-height rail char — the
+				// vertical line lives in the upper half only, connecting to the ┃ rail
+				// above while staying half-height. ▀ (upper half block, bg-colored via
+				// foreground) fills the rest. No ANSI background escape is applied —
+				// the top half is painted via foreground-colored half-blocks, leaving
+				// the bottom half of every cell fully transparent.
+				const buildBottomStrip = (fullWidth: number): string => {
+					const fill = Math.max(0, fullWidth - 1);
+					return `${accentRail(bottomRail)}${bgFgPrefix}${"▀".repeat(fill)}${bgFgSuffix}`;
 				};
 
 				// Use sentinel borderColor to detect top/bottom borders and separate
@@ -323,12 +349,19 @@ export default function (pi: ExtensionAPI) {
 				const cwd = formatCwd(ctx.cwd);
 				const completion = lastCompletion ? `${lastCompletion} · ` : "";
 				const location = `${cwd.leaf}${branch ? `:${branch}` : ""}`;
+				const tokensSaved = readPtcTokensSaved();
+				const savedSegment = tokensSaved > 0
+					? ` · ${theme.fg("success", `saved ${formatTokens(tokensSaved)}`)}`
+					: "";
 				const statusRight =
-					theme.fg("dim", `${completion}${formatContext(ctx)} · `) +
+					theme.fg("dim", `${completion}${formatContext(ctx)}`) +
+					savedSegment +
+					theme.fg("dim", ` · `) +
 					theme.fg("muted", location);
 
 				const statusText = formatStatusRow(statusLeft, statusRight, editorWidth);
 				result.push(buildLine(statusText, editorWidth));
+				result.push(buildBottomStrip(width));
 
 				return result;
 			}
