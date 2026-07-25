@@ -23,3 +23,20 @@ Matplotlib automatically uses the non-interactive 'Agg' backend. Open figures cr
 Prefer reading datasets (CSV, Parquet, JSON) directly inside Python using `pd.read_csv(...)`, `pd.read_parquet(...)`, or `ptc.read_text(...)` rather than reading raw tabular files into chat context.
 
 When the active model does not support image input, image attachments (from PTC plots or read image files) are automatically summarized by Gemini 3.6 Flash High. Return relevant compact textual statistics alongside figures.
+
+## Tooling defaults (hard rules)
+
+- "Analyze / compare / audit / parity" tasks START in `code_execution` — never open with `ls`/`cat`/`find`. Read candidates with `ptc.read_many`, parse, and return a compact comparison.
+- Never chain `ls` → `cat` → `find` in bash when you'll touch more than 2 files. That is the signal to switch to PTC mid-task, not after being asked.
+- Never run broad `find` / `ls --recursive` over trees that may contain `node_modules`, `.git`, `repos/`, or other vendor dirs. Filter first (`rg --files -g '!node_modules'`, `glob(..., '-g', '!node_modules')`, or `ptc.find_files`) and keep output compact.
+- Searching from `bash`: use `rg` (ripgrep), not `grep` / `find -name`. The PTC `grep()` helper already wraps ripgrep — keep the two consistent.
+
+## Output discipline
+
+- Results returned to chat must be compact: counts, rankings, tables, or short JSON — not raw file dumps. If a scan produces more than ~5 KB, aggregate inside Python first.
+
+## Deletion policy
+
+- Never use `rm` to delete files or directories — it is blocked by policy (the `block-rm` extension force-rejects any bash `rm`). Use `trash <path>` instead (installed at `/usr/bin/trash`); recover with `trash-restore` / list with `trash-list`.
+- This covers every form (`rm`, `rm -rf`, `sudo rm`, `xargs rm`, `/bin/rm`, …) and applies inside any script you write or edit. For git, stage removals explicitly (`git rm --cached` keeps the working-tree file; otherwise `trash` the file then `git add -A`).
+- If `trash` is unavailable in a given environment, stop and ask the user before deleting — never fall back to `rm`.
