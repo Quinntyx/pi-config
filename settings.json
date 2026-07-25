@@ -1,8 +1,8 @@
 {
   "lastChangelogVersion": "0.82.0",
   "theme": "everforest-tui-light",
-  "defaultProvider": "antigravity",
-  "defaultModel": "gemini-3.6-flash-high",
+  "defaultProvider": "featherless",
+  "defaultModel": "zai-org/GLM-5.2",
   "defaultThinkingLevel": "high",
   "enabledModels": [
     "featherless/poolside/Laguna-S-2.1",
@@ -22,5 +22,5 @@
     "git:github.com/Quinntyx/pi-web-access@009fb6db1e01732935fe51815d0e508a4b0cb5f8",
     "npm:pi-hashline-edit@0.8.3"
   ],
-  "hideThinkingBlock": true
+  "hideThinkingBlock": false
 }
