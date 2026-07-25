@@ -1,13 +1,12 @@
 {
   "lastChangelogVersion": "0.82.0",
   "theme": "everforest-tui-light",
-  "defaultProvider": "antigravity",
-  "defaultModel": "gemini-3.6-flash-high",
-  "defaultThinkingLevel": "high",
+  "defaultProvider": "zai",
+  "defaultModel": "glm-5.2",
+  "defaultThinkingLevel": "low",
   "enabledModels": [
     "featherless/poolside/Laguna-S-2.1",
     "featherless/zai-org/GLM-5.2",
-    "openai-codex/gpt-5.6-sol",
     "antigravity/gemini-3.6-flash-high",
     "zai/glm-5.2"
   ],
@@ -22,6 +21,9 @@
     "git:github.com/Quinntyx/pi-web-access@009fb6db1e01732935fe51815d0e508a4b0cb5f8",
     "npm:pi-hashline-edit@0.8.3",
     "npm:pi-permissions"
+  ],
+  "extensions": [
+    "/home/zlare/.pi/agent/extensions/autopilot.ts"
   ],
   "hideThinkingBlock": true
 }
