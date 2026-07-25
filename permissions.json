@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm *)",
+      "Bash(sudo rm *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Write(*.env*)",
+      "Edit(*.env*)"
+    ]
+  }
+}

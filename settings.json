@@ -1,9 +1,9 @@
 {
   "lastChangelogVersion": "0.82.0",
   "theme": "everforest-tui-light",
-  "defaultProvider": "zai",
-  "defaultModel": "glm-5.2",
-  "defaultThinkingLevel": "low",
+  "defaultProvider": "antigravity",
+  "defaultModel": "gemini-3.6-flash-high",
+  "defaultThinkingLevel": "high",
   "enabledModels": [
     "featherless/poolside/Laguna-S-2.1",
     "featherless/zai-org/GLM-5.2",
