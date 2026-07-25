@@ -1,5 +1,5 @@
 import { writeFile } from "node:fs/promises";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 /**
  * Cooperates with the `pi` fish wrapper to leave the parent shell in Pi's
