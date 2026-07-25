@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Fira+Code:wght@400;500;700&display=swap');
+
+html {
+    background-color: #fdf6e3 !important;
+    color: #5c6a72 !important;
+    font-family: 'Atkinson Hyperlegible', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif !important;
+    font-size: 17px !important;
+    line-height: 1.6 !important;
+}
+
+body {
+    max-width: 48em !important;
+    margin: 0 auto !important;
+    padding: 2rem 1.5rem !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #343f44 !important;
+    font-family: 'Atkinson Hyperlegible', sans-serif !important;
+    font-weight: 700 !important;
+    margin-top: 2rem !important;
+    margin-bottom: 1rem !important;
+}
+
+h1 {
+    font-size: 2.2rem !important;
+    border-bottom: 2px solid #e6e2cc !important;
+    padding-bottom: 0.5rem !important;
+}
+
+h2 {
+    font-size: 1.6rem !important;
+    border-bottom: 1px solid #e6e2cc !important;
+    padding-bottom: 0.3rem !important;
+}
+
+h3 {
+    font-size: 1.3rem !important;
+}
+
+a {
+    color: #3a94c5 !important;
+    text-decoration: none !important;
+}
+
+a:hover {
+    text-decoration: underline !important;
+    color: #35a77c !important;
+}
+
+code, pre, kbd, samp {
+    font-family: 'Fira Code', Menlo, Monaco, Consolas, 'Lucida Console', monospace !important;
+    font-size: 0.9em !important;
+}
+
+code {
+    background-color: #f4f0d9 !important;
+    color: #5c6a72 !important;
+    padding: 0.2rem 0.4rem !important;
+    border-radius: 4px !important;
+}
+
+pre {
+    background-color: #f4f0d9 !important;
+    padding: 1rem !important;
+    border-radius: 6px !important;
+    overflow-x: auto !important;
+    border: 1px solid #e6e2cc !important;
+    line-height: 1.5 !important;
+}
+
+pre code {
+    background-color: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    color: inherit !important;
+    font-size: 0.85em !important;
+}
+
+blockquote {
+    margin: 1.5rem 0 !important;
+    padding: 0.5rem 1rem !important;
+    border-left: 4px solid #35a77c !important;
+    background-color: #efebd4 !important;
+    color: #829181 !important;
+    border-radius: 0 4px 4px 0 !important;
+}
+
+blockquote p {
+    margin: 0 !important;
+}
+
+table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 1.5rem 0 !important;
+}
+
+th, td {
+    padding: 0.6rem 0.8rem !important;
+    border-bottom: 1px solid #e6e2cc !important;
+    text-align: left !important;
+}
+
+th {
+    background-color: #efebd4 !important;
+    color: #343f44 !important;
+    font-weight: 700 !important;
+}
+
+tr:nth-child(even) {
+    background-color: #f4f0d9 !important;
+}
+
+hr {
+    border: none !important;
+    border-top: 2px solid #e6e2cc !important;
+    margin: 2rem 0 !important;
+}
+
+/* Syntax Highlighting for codeblocks mapped to Everforest Light Medium */
+code span.al { color: #f85552 !important; font-weight: bold !important; } /* Alert */
+code span.an { color: #829181 !important; font-style: italic !important; } /* Annotation */
+code span.at { color: #dfa000 !important; } /* Attribute */
+code span.bn { color: #df69ba !important; } /* BaseN */
+code span.bu { color: #35a77c !important; } /* BuiltIn */
+code span.cf { color: #f57d26 !important; font-weight: bold !important; } /* ControlFlow */
+code span.ch { color: #8da101 !important; } /* Char */
+code span.cn { color: #df69ba !important; } /* Constant */
+code span.co { color: #939f91 !important; font-style: italic !important; } /* Comment */
+code span.cv { color: #939f91 !important; font-style: italic !important; } /* CommentVar */
+code span.do { color: #939f91 !important; font-style: italic !important; } /* Documentation */
+code span.dt { color: #35a77c !important; } /* DataType */
+code span.dv { color: #df69ba !important; } /* DecVal */
+code span.er { color: #f85552 !important; font-weight: bold !important; } /* Error */
+code span.ex { color: #3a94c5 !important; } /* Extension */
+code span.fl { color: #df69ba !important; } /* Float */
+code span.fu { color: #3a94c5 !important; } /* Function */
+code span.im { color: #8da101 !important; font-weight: bold !important; } /* Import */
+code span.in { color: #939f91 !important; font-style: italic !important; } /* Information */
+code span.kw { color: #f57d26 !important; font-weight: bold !important; } /* Keyword */
+code span.op { color: #5c6a72 !important; } /* Operator */
+code span.ot { color: #f57d26 !important; } /* Other */
+code span.pp { color: #df69ba !important; } /* Preprocessor */
+code span.sc { color: #8da101 !important; } /* SpecialChar */
+code span.ss { color: #8da101 !important; } /* SpecialString */
+code span.st { color: #8da101 !important; } /* String */
+code span.va { color: #3a94c5 !important; } /* Variable */
+code span.vs { color: #8da101 !important; } /* VerbatimString */
+code span.wa { color: #f85552 !important; font-weight: bold !important; } /* Warning */
