@@ -1,44 +1,66 @@
 /**
- * Auto-continue after auto-compaction
+ * Auto-continue after interrupted auto-compaction.
  *
- * Pi's built-in compaction has two automatic triggers:
- *   - "overflow"  : context overflow -> auto-retries (willRetry: true), no help needed
- *   - "threshold" : context getting large -> compacts, then goes IDLE waiting for input
+ * A threshold compaction can happen in two places: after an agent run, or during
+ * preflight for a real user prompt. `session_compact` fires before that preflight
+ * prompt is submitted. Sending "continue" from `session_compact` races the real
+ * prompt and can turn it into steering input, effectively swallowing it.
  *
- * The threshold case leaves you at an empty prompt. This extension sends a single
- * "continue" user turn so the model resumes automatically (OpenCode-style, but with
- * a short nudge instead of duplicating the last prompt).
- *
- * Manual `/compact` is deliberately left alone — you chose to compact, so you expect
- * to land at an idle prompt. Overflow recovery is also left alone since it already resumes.
- *
- * Timing note: `session_compact` fires while the agent run is still active (between
- * agent_end and agent_settled), so a bare sendUserMessage throws "Agent is already
- * processing". We branch like send-user-message.ts: queue as followUp when busy, which
- * dispatches automatically once the agent settles idle right after compaction completes.
+ * Arm a continuation at compaction time, but dispatch it only at `agent_settled`.
+ * Any user message delivered in between cancels the synthetic continuation. This
+ * preserves automatic resumption for interrupted turns without racing typed input.
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const CONTINUE_PROMPT = "continue";
 
 export default function (pi: ExtensionAPI) {
-  pi.on("session_compact", (_event, ctx) => {
-    const event = _event as {
-      reason: "manual" | "threshold" | "overflow";
-      willRetry: boolean;
-    };
+  let lastStopReason: string | undefined;
+  let continuationPending = false;
 
-    // Only nudge on auto-compaction that left the agent idle.
-    // - Skip "manual" (/compact): user expects to land at an idle prompt.
-    // - Skip willRetry===true (overflow recovery): it already resumes by itself.
-    if (event.reason === "manual" || event.willRetry) return;
-
-    if (ctx.isIdle()) {
-      pi.sendUserMessage(CONTINUE_PROMPT);
-    } else {
-      // Agent is still finishing the compaction run — queue until it settles idle.
-      pi.sendUserMessage(CONTINUE_PROMPT, { deliverAs: "followUp" });
+  pi.on("turn_end", (event) => {
+    const message = (event as { message?: { role?: string; stopReason?: string } }).message;
+    if (message?.role === "assistant" && typeof message.stopReason === "string") {
+      lastStopReason = message.stopReason;
     }
+  });
+
+  // A real user message always wins over an armed synthetic continuation. This
+  // catches both prompts submitted while compaction is running and prompts whose
+  // preflight check itself triggered the compaction.
+  pi.on("message_end", (event) => {
+    if (event.message.role === "user") {
+      continuationPending = false;
+    }
+  });
+
+  pi.on("session_compact", (event, ctx) => {
+    continuationPending = false;
+
+    // Manual compaction intentionally lands at an idle prompt. Overflow recovery
+    // already retries by itself when willRetry is true.
+    if (event.reason === "manual" || event.willRetry) {
+      lastStopReason = undefined;
+      return;
+    }
+
+    const stopReason = lastStopReason;
+    lastStopReason = undefined;
+
+    // Do not manufacture another turn after a response that completed normally.
+    if (stopReason === "stop") {
+      ctx.ui.notify("Auto-continue: skipping nudge (turn completed naturally)", "info");
+      return;
+    }
+
+    continuationPending = true;
+  });
+
+  pi.on("agent_settled", (_event, ctx) => {
+    if (!continuationPending) return;
+
+    continuationPending = false;
+    pi.sendUserMessage(CONTINUE_PROMPT);
     ctx.ui.notify("Auto-continue: resumed after compaction", "info");
   });
 }

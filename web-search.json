@@ -1,5 +1,0 @@
-{
-  "provider": "exa",
-  "summaryModel": "antigravity/gemini-3.6-flash-high",
-  "workflow": "auto-summary"
-}

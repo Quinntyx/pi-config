@@ -1,18 +1,36 @@
 {
-  "lastChangelogVersion": "0.82.0",
+  "lastChangelogVersion": "0.83.0",
   "theme": "everforest-tui-light",
-  "defaultProvider": "zai",
-  "defaultModel": "glm-5.2",
-  "defaultThinkingLevel": "low",
+  "defaultProvider": "opencode",
+  "defaultModel": "deepseek-v4-flash-free",
+  "defaultThinkingLevel": "high",
   "enabledModels": [
     "featherless/poolside/Laguna-S-2.1",
     "featherless/zai-org/GLM-5.2",
     "antigravity/gemini-3.6-flash-high",
-    "zai/glm-5.2"
+    "openai-codex/gpt-5.6-sol",
+    "opencode/deepseek-v4-flash-free",
+    "featherless/moonshotai/Kimi-K3",
+    "openrouter/deepseek/deepseek-v4-flash-0731"
   ],
+  "providers": {
+    "openrouter": {
+      "modelOverrides": {
+        "deepseek/deepseek-v4-flash-0731": {
+          "compat": {
+            "openRouterRouting": {
+              "only": [
+                "deepinfra"
+              ],
+              "allow_fallbacks": false
+            }
+          }
+        }
+      }
+    }
+  },
   "packages": [
     "git:github.com/Quinntyx/pi-ptc-next@152f309272e5548f01d61235dc2d0c37140f0c66",
-    "npm:pi-subagents",
     "npm:@narumitw/pi-btw",
     "npm:@quintinshaw/pi-dynamic-workflows",
     "git:github.com/Quinntyx/pi-antigravity-auth@90c5addbcf61028bc12a661a8be5ffab280b9750",
@@ -22,8 +40,8 @@
     "npm:pi-hashline-edit@0.8.3",
     "npm:pi-permissions"
   ],
-  "extensions": [
-    "/home/zlare/.pi/agent/extensions/autopilot.ts"
-  ],
-  "hideThinkingBlock": true
+  "hideThinkingBlock": false,
+  "compaction": {
+    "reserveTokens": 0
+  }
 }

@@ -103,6 +103,15 @@
             "requiresReasoningContentOnAssistantMessages": true
           },
           "cost": { "input": 1, "output": 4, "cacheRead": 0, "cacheWrite": 0 }
+        },
+        {
+          "id": "moonshotai/Kimi-K3",
+          "name": "Kimi-K3",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "contextWindow": 49152,
+          "maxTokens": 32768,
+          "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
         }
       ]
     }

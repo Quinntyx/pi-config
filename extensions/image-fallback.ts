@@ -9,6 +9,12 @@ const SUMMARY_MODEL_ID = "gemini-3.6-flash-high";
 // to keep summary calls bounded even when a turn is very long.
 const MAX_CONTEXT_CHARS = 6000;
 
+// Sub-budget for the model's own reasoning (thinking blocks) within that
+// context. The assistant often reasons about why it wants to see an image
+// before reading it, which is high-value signal for what the summary
+// should emphasize.
+const THINKING_MAX_CHARS = 2000;
+
 const summaryCache = new Map<string, string>();
 const inFlightSummaries = new Map<string, Promise<string>>();
 
@@ -34,6 +40,18 @@ function messageText(msg: AgentMessage): string {
 	return "";
 }
 
+/** The model's reasoning (thinking blocks) in a message, capped to THINKING_MAX_CHARS. */
+function messageReasoning(msg: AgentMessage): string {
+	if (!Array.isArray(msg.content)) return "";
+	const thinking = msg.content
+		.filter((b: any) => b.type === "thinking" && typeof b.thinking === "string")
+		.map((b: any) => b.thinking)
+		.join("\n")
+		.trim();
+	if (!thinking) return "";
+	return truncate(thinking, THINKING_MAX_CHARS);
+}
+
 async function summarizeImage(
 	data: string,
 	mimeType: string,
@@ -41,6 +59,7 @@ async function summarizeImage(
 	ctx: any,
 	containingMessageText: string | null,
 	precedingTurnText: string | null,
+	precedingTurnReasoning: string | null,
 ): Promise<string> {
 	const hash = hashImage(data);
 	if (summaryCache.has(hash)) {
@@ -69,10 +88,15 @@ async function summarizeImage(
 				return `[Automatic image summary unavailable: ${auth.error}]`;
 			}
 
-			// Build a context block from the containing message + preceding turn.
-			// When present, the prompt tells Gemini to weight the summary toward
-			// details that matter for that context.
+			// Build a context block from the containing message + preceding turn,
+			// including the model's reasoning from that turn (the assistant often
+			// explains why it wants to see the image before reading it). When
+			// present, the prompt tells Gemini to weight the summary toward details
+			// that matter for that context.
 			const contextParts: string[] = [];
+			if (precedingTurnReasoning) {
+				contextParts.push(`Preceding turn reasoning:\n"""\n${precedingTurnReasoning}\n"""`);
+			}
 			if (precedingTurnText) {
 				contextParts.push(`Preceding turn:\n"""\n${truncate(precedingTurnText)}\n"""`);
 			}
@@ -165,10 +189,14 @@ export default function imageFallback(pi: ExtensionAPI) {
 				if (!hasImages) return msg;
 
 				// Context for the summary: the text of this message (excluding the
-				// image itself) and the immediately preceding turn, if any.
+				// image itself), the immediately preceding turn, and the model's
+				// reasoning from that turn — the assistant often reasons about why it
+				// wants to see an image before reading it, which is high-value signal
+				// for what the summary should emphasize.
 				const containingMessageText = messageText(msg) || null;
 				const precedingMsg = idx > 0 ? messages[idx - 1] : undefined;
 				const precedingTurnText = precedingMsg ? messageText(precedingMsg) || null : null;
+				const precedingTurnReasoning = precedingMsg ? messageReasoning(precedingMsg) || null : null;
 
 				modified = true;
 				const newContent = await Promise.all(
@@ -184,6 +212,7 @@ export default function imageFallback(pi: ExtensionAPI) {
 							ctx,
 							containingMessageText,
 							precedingTurnText,
+							precedingTurnReasoning,
 						);
 
 						return {

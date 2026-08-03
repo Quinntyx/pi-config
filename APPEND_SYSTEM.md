@@ -30,6 +30,7 @@ When the active model does not support image input, image attachments (from PTC 
 - Never chain `ls` → `cat` → `find` in bash when you'll touch more than 2 files. That is the signal to switch to PTC mid-task, not after being asked.
 - Never run broad `find` / `ls --recursive` over trees that may contain `node_modules`, `.git`, `repos/`, or other vendor dirs. Filter first (`rg --files -g '!node_modules'`, `glob(..., '-g', '!node_modules')`, or `ptc.find_files`) and keep output compact.
 - Searching from `bash`: use `rg` (ripgrep), not `grep` / `find -name`. The PTC `grep()` helper already wraps ripgrep — keep the two consistent.
+- Never run Python via `python3 -c` or `python3 << EOF` heredocs in bash. Use the PTC `code_execution` tool directly instead — it executes in a real Python runtime, so parsing, data work, and scripts stay inside Python rather than shell-quoting or heredoc plumbing.
 
 ## Output discipline
 
