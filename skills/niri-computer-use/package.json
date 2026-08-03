@@ -1,0 +1,11 @@
+{
+  "name": "niri-computer-use",
+  "private": true,
+  "type": "module",
+  "description": "Shell-native computer-use workflow for Niri/Wayland (niri msg + grim + ydotool) with a narrow guarded input shim.",
+  "scripts": {
+    "test": "node --test tests/unit.test.ts tests/integration.test.ts",
+    "live-smoke": "node scripts/live-smoke.mjs",
+    "check": "node --check bin/niri-use.ts && node scripts/check-syntax.mjs"
+  }
+}

@@ -1,0 +1,15 @@
+#!/usr/bin/env node
+/**
+ * Fake `layer-shell-rs` for tests. Records argv.
+ * Env: FAKE_LSR_EXIT, FAKE_LSR_SLEEP_MS.
+ */
+import { appendFileSync } from "node:fs";
+
+const argv = process.argv.slice(2);
+const log = process.env.FAKE_LOG;
+if (log) appendFileSync(log, JSON.stringify({ tool: "layer-shell-rs", argv }) + "\n");
+
+const sleepMs = Number(process.env.FAKE_LSR_SLEEP_MS || 0);
+if (sleepMs > 0) await new Promise((r) => setTimeout(r, sleepMs));
+
+process.exit(Number(process.env.FAKE_LSR_EXIT || 0));

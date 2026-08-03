@@ -1,0 +1,124 @@
+#!/usr/bin/env node
+/**
+ * Fake `niri` for tests. Records argv, returns canned JSON for state queries.
+ *
+ * Focus state is derived from the log: the last `msg action focus-window --id N`
+ * recorded in FAKE_LOG becomes the focused window for subsequent queries, so
+ * restore flows can be tested end-to-end. Env controls: FAKE_FOCUSED_ID,
+ * FAKE_FOCUSED_APP, FAKE_FOCUSED_TITLE, FAKE_NIRI_EXIT, FAKE_NIRI_SLEEP_MS.
+ */
+import { appendFileSync, readFileSync } from "node:fs";
+
+const argv = process.argv.slice(2);
+const log = process.env.FAKE_LOG;
+if (log) appendFileSync(log, JSON.stringify({ tool: "niri", argv }) + "\n");
+
+const sleepMs = Number(process.env.FAKE_NIRI_SLEEP_MS || 0);
+if (sleepMs > 0) await new Promise((r) => setTimeout(r, sleepMs));
+
+/** Scan the log for the most recent focus-window action id. */
+function lastFocusedIdFromLog() {
+  if (!log) return null;
+  try {
+    const lines = readFileSync(log, "utf8").trim().split("\n").filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const e = JSON.parse(lines[i]);
+      if (
+        e.tool === "niri" &&
+        e.argv[0] === "msg" &&
+        e.argv[1] === "action" &&
+        e.argv[2] === "focus-window"
+      ) {
+        return Number(e.argv[4]);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+const focusedId = lastFocusedIdFromLog() ?? Number(process.env.FAKE_FOCUSED_ID || 42);
+const isOther = focusedId === 57;
+
+const focused = {
+  id: focusedId,
+  title: isOther
+    ? "Other Window"
+    : process.env.FAKE_FOCUSED_TITLE || "Fake Window",
+  app_id: isOther
+    ? "org.other.App"
+    : process.env.FAKE_FOCUSED_APP || "org.example.App",
+  pid: 1000,
+  workspace_id: isOther ? 1 : Number(process.env.FAKE_FOCUSED_WS || 1),
+  is_focused: true,
+  is_floating: false,
+  is_urgent: false,
+  layout: { window_size: [800, 600] },
+};
+
+const other = {
+  id: 57,
+  title: "Other Window",
+  app_id: "org.other.App",
+  pid: 1001,
+  workspace_id: 1,
+  is_focused: focusedId === 57,
+  is_floating: false,
+  is_urgent: false,
+  layout: { window_size: [640, 480] },
+};
+
+// niri msg -j <sub>
+if (argv[0] === "msg" && argv[1] === "-j") {
+  const sub = argv[2];
+  if (sub === "focused-window") {
+    process.stdout.write(JSON.stringify(focused) + "\n");
+    process.exit(0);
+  }
+  if (sub === "windows") {
+    const win42 = {
+      id: 42,
+      title: "Fake Window",
+      app_id: process.env.FAKE_FOCUSED_APP || "org.example.App",
+      pid: 1000,
+      workspace_id: 1,
+      is_focused: focusedId === 42,
+      is_floating: false,
+      is_urgent: false,
+      layout: { window_size: [800, 600] },
+    };
+    // Both candidate windows always exist so restore flows can find them;
+    // is_focused tracks the currently focused id.
+    process.stdout.write(JSON.stringify([win42, other]) + "\n");
+    process.exit(0);
+  }
+  if (sub === "workspaces") {
+    process.stdout.write(
+      JSON.stringify([
+        { id: 1, idx: 1, name: null, output: "HDMI-A-2", is_active: true, is_focused: true, active_window_id: focusedId },
+        { id: 2, idx: 2, name: null, output: "DP-6", is_active: false, is_focused: false, active_window_id: null },
+      ]) + "\n",
+    );
+    process.exit(0);
+  }
+  if (sub === "outputs") {
+    process.stdout.write(
+      JSON.stringify({
+        "HDMI-A-2": { logical: { x: 0, y: 0, width: 1920, height: 1080 } },
+        "DP-6": { logical: { x: 1920, y: 0, width: 1920, height: 1080 } },
+      }) + "\n",
+    );
+    process.exit(0);
+  }
+  process.stderr.write(`fake niri: unknown -j sub ${sub}\n`);
+  process.exit(1);
+}
+
+// niri msg action ...
+if (argv[0] === "msg" && argv[1] === "action") {
+  process.exit(Number(process.env.FAKE_NIRI_EXIT || 0));
+}
+
+process.stderr.write(`fake niri: unhandled argv ${JSON.stringify(argv)}\n`);
+process.exit(1);

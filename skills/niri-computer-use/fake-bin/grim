@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+/**
+ * Fake `grim` for tests. Records argv, creates the target file.
+ * Env: FAKE_GRIM_EXIT, FAKE_GRIM_SLEEP_MS.
+ */
+import { appendFileSync, writeFileSync } from "node:fs";
+
+const argv = process.argv.slice(2);
+const log = process.env.FAKE_LOG;
+if (log) appendFileSync(log, JSON.stringify({ tool: "grim", argv }) + "\n");
+
+const sleepMs = Number(process.env.FAKE_GRIM_SLEEP_MS || 0);
+if (sleepMs > 0) await new Promise((r) => setTimeout(r, sleepMs));
+
+const out = argv[argv.length - 1];
+if (typeof out === "string" && out.endsWith(".png")) {
+  writeFileSync(out, "fake-png-bytes");
+}
+process.exit(Number(process.env.FAKE_GRIM_EXIT || 0));

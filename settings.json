@@ -1,8 +1,8 @@
 {
   "lastChangelogVersion": "0.83.0",
   "theme": "everforest-tui-light",
-  "defaultProvider": "opencode",
-  "defaultModel": "deepseek-v4-flash-free",
+  "defaultProvider": "antigravity",
+  "defaultModel": "gemini-3.6-flash-high",
   "defaultThinkingLevel": "high",
   "enabledModels": [
     "featherless/poolside/Laguna-S-2.1",
@@ -32,7 +32,6 @@
   "packages": [
     "git:github.com/Quinntyx/pi-ptc-next@152f309272e5548f01d61235dc2d0c37140f0c66",
     "npm:@narumitw/pi-btw",
-    "npm:@quintinshaw/pi-dynamic-workflows",
     "git:github.com/Quinntyx/pi-antigravity-auth@90c5addbcf61028bc12a661a8be5ffab280b9750",
     "npm:pi-everforest-tui",
     "git:github.com/Quinntyx/pi-session-move@5a80119c12494f6612154f9696cf6db4011327e1",
@@ -40,8 +39,9 @@
     "npm:pi-hashline-edit@0.8.3",
     "npm:pi-permissions"
   ],
-  "hideThinkingBlock": false,
+  "hideThinkingBlock": true,
   "compaction": {
     "reserveTokens": 0
-  }
+  },
+  "enableSkillCommands": true
 }
